@@ -5,7 +5,7 @@ This module provides a comprehensive preprocessing pipeline for Twitter sentimen
 It includes data loading, cleaning, feature engineering, and transformation functions
 to prepare text data for sentiment analysis modeling.
 
-Author: Senior Data Scientist
+Author: Abdullah Shareef
 Date: April 15, 2025
 """
 
