@@ -103,7 +103,7 @@ python main.py
 **Abdullah Shareef**  
 MSc NLP Student | Data Enthusiast | AI for Social Good  
 📍 Trier University  
-📬 [LinkedIn](https://www.linkedin.com/in/abdullah-shareef-nlp)
+📬 [LinkedIn]([https://www.linkedin.com/in/abdullah-shareef-](https://www.linkedin.com/in/abdullah1shareef/))
 
 ---
 
