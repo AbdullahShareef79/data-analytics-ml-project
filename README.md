@@ -1,4 +1,3 @@
-Perfect! Let’s write a **professional README.md** for your sentiment analysis project, tailored for your GitHub repo: [data-analytics-ml-project](https://github.com/AbdullahShareef79/data-analytics-ml-project).
 
 ---
 
