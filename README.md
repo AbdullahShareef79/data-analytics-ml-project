@@ -1,7 +1,6 @@
 
 ---
 
-### ✅ Here's a clean, complete version of the README:
 
 ```markdown
 # Sentiment Analysis Pipeline 🧠📊
