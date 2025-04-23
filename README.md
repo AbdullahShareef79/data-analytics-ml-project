@@ -2,7 +2,6 @@
 ---
 
 
-```markdown
 # Sentiment Analysis Pipeline 🧠📊
 
 A complete end-to-end sentiment analysis project that processes social media text data, extracts features, trains multiple machine learning models, evaluates their performance, and deploys the best-performing model in a production-ready pipeline.
