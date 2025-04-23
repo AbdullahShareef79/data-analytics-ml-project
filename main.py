@@ -431,9 +431,10 @@ class TwitterSentimentModeler:
         return results
     
     def visualize_results(self, 
-                         y_test: Union[np.ndarray, pd.Series],
-                         results: Optional[Dict] = None,
-                         output_dir: str = './figures') -> None:
+                        y_test: Union[np.ndarray, pd.Series],
+                        results: Optional[Dict] = None,
+                        X_test: Optional[Union[np.ndarray, pd.DataFrame]] = None,
+                        output_dir: str = './figures') -> None:
         """
         Visualize model evaluation results.
         
@@ -517,31 +518,42 @@ class TwitterSentimentModeler:
         
         # 3. ROC Curve for binary classification
         # Only applicable for binary classification
+        # 3. ROC Curve for binary classification
+# Only applicable for binary classification and if X_test is provided
+        # 3. ROC Curve for binary classification
+# Only applicable for binary classification
+ # 3. ROC Curve for binary classification
+# Only applicable for binary classification
         if len(np.unique(y_test)) == 2:
-            plt.figure(figsize=(10, 8))
-            
-            for model_key, result in results.items():
-                model_obj = self.models[model_key]
+            try:
+                plt.figure(figsize=(10, 8))
                 
-                # Check if model has predict_proba method
-                if hasattr(model_obj, 'predict_proba'):
-                    y_prob = model_obj.predict_proba(y_test)[:, 1]
-                    fpr, tpr, _ = roc_curve(y_test, y_prob)
-                    roc_auc = auc(fpr, tpr)
+                for model_key, result in results.items():
+                    model_obj = self.models[model_key]
                     
-                    plt.plot(fpr, tpr, label=f'{result["name"]} (AUC = {roc_auc:.3f})')
+                    # Skip if model doesn't have predict_proba
+                    if not hasattr(model_obj, 'predict_proba'):
+                        continue
+                        
+                    # Use X_test from stored results if available
+                    if hasattr(self, 'X_test'):
+                        y_prob = model_obj.predict_proba(self.X_test)[:, 1]
+                        fpr, tpr, _ = roc_curve(y_test, y_prob)
+                        roc_auc = auc(fpr, tpr)
+                        
+                        plt.plot(fpr, tpr, label=f'{result["name"]} (AUC = {roc_auc:.3f})')
                 
-            plt.plot([0, 1], [0, 1], 'k--')
-            plt.xlabel('False Positive Rate')
-            plt.ylabel('True Positive Rate')
-            plt.title('ROC Curve')
-            plt.legend(loc='lower right')
-            plt.tight_layout()
-            plt.savefig(os.path.join(output_dir, 'roc_curve.png'))
-            plt.close()
-        
-        logger.info(f"Visualizations saved to {output_dir}")
-    
+                if plt.gca().get_lines():  # Check if any lines were plotted
+                    plt.plot([0, 1], [0, 1], 'k--')
+                    plt.xlabel('False Positive Rate')
+                    plt.ylabel('True Positive Rate')
+                    plt.title('ROC Curve')
+                    plt.legend(loc='lower right')
+                    plt.tight_layout()
+                    plt.savefig(os.path.join(output_dir, 'roc_curve.png'))
+                plt.close()
+            except Exception as e:
+                logger.warning(f"Could not generate ROC curve: {e}")
     def hyperparameter_tuning(self, 
                             X_train: Union[np.ndarray, pd.DataFrame], 
                             y_train: Union[np.ndarray, pd.Series],
@@ -785,58 +797,58 @@ class TwitterSentimentModeler:
                 pickle.dump(vectorizer, f)
             logger.info(f"Default TF-IDF vectorizer saved to {vectorizer_path}")
     
-def build_pipeline(self, 
+    def build_pipeline(self, 
                    model_key: str = None, 
                    vectorizer_key: str = 'tfidf') -> Pipeline:
-    """
-    Build a complete preprocessing and modeling pipeline.
-    
-    Args:
-        model_key: Key for the model to use (None for best model)
-        vectorizer_key: Key for the vectorizer to use
+        """
+        Build a complete preprocessing and modeling pipeline.
         
-    Returns:
-        Scikit-learn Pipeline object
-    """
-    logger.info(f"Building pipeline with vectorizer={vectorizer_key} and model={model_key}")
-    
-    # Determine which model to use
-    if model_key is None:
-        # Use best model
-        if self.best_model is None:
-            logger.warning("No best model available. Using Logistic Regression as default.")
-            model = LogisticRegression(random_state=self.random_state)
+        Args:
+            model_key: Key for the model to use (None for best model)
+            vectorizer_key: Key for the vectorizer to use
+            
+        Returns:
+            Scikit-learn Pipeline object
+        """
+        logger.info(f"Building pipeline with vectorizer={vectorizer_key} and model={model_key}")
+        
+        # Determine which model to use
+        if model_key is None:
+            # Use best model
+            if self.best_model is None:
+                logger.warning("No best model available. Using Logistic Regression as default.")
+                model = LogisticRegression(random_state=self.random_state)
+            else:
+                model = self.best_model
         else:
-            model = self.best_model
-    else:
-        # Use specified model
-        if model_key not in self.models:
-            logger.warning(f"Model {model_key} not found. Using Logistic Regression as default.")
-            model = LogisticRegression(random_state=self.random_state)
+            # Use specified model
+            if model_key not in self.models:
+                logger.warning(f"Model {model_key} not found. Using Logistic Regression as default.")
+                model = LogisticRegression(random_state=self.random_state)
+            else:
+                model = self.models[model_key]
+        
+        # Determine which vectorizer to use
+        if vectorizer_key not in self.vectorizers:
+            logger.warning(f"Vectorizer {vectorizer_key} not found. Using TF-IDF as default.")
+            vectorizer = TfidfVectorizer(
+                max_features=10000,
+                min_df=0.001,
+                max_df=0.95,
+                ngram_range=(1, 2),
+                sublinear_tf=True
+            )
         else:
-            model = self.models[model_key]
-    
-    # Determine which vectorizer to use
-    if vectorizer_key not in self.vectorizers:
-        logger.warning(f"Vectorizer {vectorizer_key} not found. Using TF-IDF as default.")
-        vectorizer = TfidfVectorizer(
-            max_features=10000,
-            min_df=0.001,
-            max_df=0.95,
-            ngram_range=(1, 2),
-            sublinear_tf=True
-        )
-    else:
-        vectorizer = self.vectorizers[vectorizer_key]
-    
-    # Build the pipeline
-    pipeline = Pipeline([
-        ('vectorizer', vectorizer),
-        ('model', model)
-    ])
-    
-    logger.info("Pipeline built successfully")
-    return pipeline
+            vectorizer = self.vectorizers[vectorizer_key]
+        
+        # Build the pipeline
+        pipeline = Pipeline([
+            ('vectorizer', vectorizer),
+            ('model', model)
+        ])
+        
+        logger.info("Pipeline built successfully")
+        return pipeline
 
     def save_pipeline(self, 
                     pipeline: Pipeline, 
@@ -886,242 +898,244 @@ def build_pipeline(self,
             logger.error(f"Error loading pipeline: {e}")
             raise
 
-def predict(self, 
-           text_data: Union[str, List[str]], 
-           pipeline: Optional[Pipeline] = None) -> np.ndarray:
-    """
-    Make predictions on new text data.
-    
-    Args:
-        text_data: Single text string or list of text strings
-        pipeline: Pipeline to use for prediction (None to build new pipeline)
+    def predict(self, 
+            text_data: Union[str, List[str]], 
+            pipeline: Optional[Pipeline] = None) -> np.ndarray:
+        """
+        Make predictions on new text data.
         
-    Returns:
-        Array of predictions
-    """
-    logger.info("Making predictions on new data")
-    
-    # Convert single string to list
-    if isinstance(text_data, str):
-        text_data = [text_data]
-    
-    # Use provided pipeline or build a new one
-    if pipeline is None:
-        pipeline = self.build_pipeline()
-    
-    # Make predictions
-    try:
-        predictions = pipeline.predict(text_data)
-        logger.info(f"Made predictions for {len(text_data)} samples")
-        return predictions
-    
-    except Exception as e:
-        logger.error(f"Error making predictions: {e}")
-        raise
+        Args:
+            text_data: Single text string or list of text strings
+            pipeline: Pipeline to use for prediction (None to build new pipeline)
+            
+        Returns:
+            Array of predictions
+        """
+        logger.info("Making predictions on new data")
+        
+        # Convert single string to list
+        if isinstance(text_data, str):
+            text_data = [text_data]
+        
+        # Use provided pipeline or build a new one
+        if pipeline is None:
+            pipeline = self.build_pipeline()
+        
+        # Make predictions
+        try:
+            predictions = pipeline.predict(text_data)
+            logger.info(f"Made predictions for {len(text_data)} samples")
+            return predictions
+        
+        except Exception as e:
+            logger.error(f"Error making predictions: {e}")
+            raise
 
-def predict_proba(self, 
-                text_data: Union[str, List[str]], 
-                pipeline: Optional[Pipeline] = None) -> np.ndarray:
-    """
-    Make probability predictions on new text data.
-    
-    Args:
-        text_data: Single text string or list of text strings
-        pipeline: Pipeline to use for prediction (None to build new pipeline)
+    def predict_proba(self, 
+                    text_data: Union[str, List[str]], 
+                    pipeline: Optional[Pipeline] = None) -> np.ndarray:
+        """
+        Make probability predictions on new text data.
         
-    Returns:
-        Array of probability predictions
-    """
-    logger.info("Making probability predictions on new data")
-    
-    # Convert single string to list
-    if isinstance(text_data, str):
-        text_data = [text_data]
-    
-    # Use provided pipeline or build a new one
-    if pipeline is None:
-        pipeline = self.build_pipeline()
-    
-    # Check if the model supports probability predictions
-    if not hasattr(pipeline.named_steps['model'], 'predict_proba'):
-        logger.warning("Model does not support probability predictions")
-        return None
-    
-    # Make predictions
-    try:
-        probabilities = pipeline.predict_proba(text_data)
-        logger.info(f"Made probability predictions for {len(text_data)} samples")
-        return probabilities
-    
-    except Exception as e:
-        logger.error(f"Error making probability predictions: {e}")
-        raise
+        Args:
+            text_data: Single text string or list of text strings
+            pipeline: Pipeline to use for prediction (None to build new pipeline)
+            
+        Returns:
+            Array of probability predictions
+        """
+        logger.info("Making probability predictions on new data")
+        
+        # Convert single string to list
+        if isinstance(text_data, str):
+            text_data = [text_data]
+        
+        # Use provided pipeline or build a new one
+        if pipeline is None:
+            pipeline = self.build_pipeline()
+        
+        # Check if the model supports probability predictions
+        if not hasattr(pipeline.named_steps['model'], 'predict_proba'):
+            logger.warning("Model does not support probability predictions")
+            return None
+        
+        # Make predictions
+        try:
+            probabilities = pipeline.predict_proba(text_data)
+            logger.info(f"Made probability predictions for {len(text_data)} samples")
+            return probabilities
+        
+        except Exception as e:
+            logger.error(f"Error making probability predictions: {e}")
+            raise
 
-def cross_validate(self, 
-                 X: Union[np.ndarray, pd.DataFrame], 
-                 y: Union[np.ndarray, pd.Series],
-                 model_key: str = 'lr',
-                 cv: int = 5,
-                 scoring: str = 'f1_weighted') -> Dict:
-    """
-    Perform cross-validation for a specified model.
-    
-    Args:
-        X: Feature matrix
-        y: Target labels
-        model_key: Key for the model to cross-validate
-        cv: Number of cross-validation folds
-        scoring: Scoring metric to use
+    def cross_validate(self, 
+                    X: Union[np.ndarray, pd.DataFrame], 
+                    y: Union[np.ndarray, pd.Series],
+                    model_key: str = 'lr',
+                    cv: int = 5,
+                    scoring: str = 'f1_weighted') -> Dict:
+        """
+        Perform cross-validation for a specified model.
         
-    Returns:
-        Dictionary with cross-validation results
-    """
-    logger.info(f"Performing {cv}-fold cross-validation for {model_key}")
-    
-    # Get the model
-    if model_key not in self.models:
-        logger.warning(f"Model {model_key} not found")
-        return None
-    
-    model = self.models[model_key]
-    
-    # Perform cross-validation
-    start_time = time.time()
-    scores = cross_val_score(
-        model, 
-        X, 
-        y, 
-        cv=cv, 
-        scoring=scoring,
-        n_jobs=-1
-    )
-    cv_time = time.time() - start_time
-    
-    logger.info(f"Cross-validation completed in {cv_time:.2f} seconds")
-    logger.info(f"Mean {scoring} score: {scores.mean():.4f} (+/- {scores.std():.4f})")
-    
-    return {
-        'model_key': model_key,
-        'scores': scores,
-        'mean_score': scores.mean(),
-        'std_score': scores.std(),
-        'cv': cv,
-        'scoring': scoring,
-        'time': cv_time
-    }
-
-def run_full_pipeline(self, 
-                    file_path: str,
-                    text_column: str = 'processed_text',
-                    target_column: str = 'target',
-                    methods: List[str] = ['tfidf'],
-                    models_to_train: List[str] = ['lr', 'nb', 'svm'],
-                    test_size: float = 0.2,
-                    tune_hyperparams: bool = False,
-                    output_dir: str = './output') -> Dict:
-    """
-    Run the full modeling pipeline from data loading to evaluation.
-    
-    Args:
-        file_path: Path to the preprocessed CSV file
-        text_column: Name of the column containing processed text
-        target_column: Name of the column containing sentiment labels
-        methods: List of vectorization methods to use
-        models_to_train: List of models to train
-        test_size: Proportion of data to use for testing
-        tune_hyperparams: Whether to perform hyperparameter tuning
-        output_dir: Directory to save outputs
+        Args:
+            X: Feature matrix
+            y: Target labels
+            model_key: Key for the model to cross-validate
+            cv: Number of cross-validation folds
+            scoring: Scoring metric to use
+            
+        Returns:
+            Dictionary with cross-validation results
+        """
+        logger.info(f"Performing {cv}-fold cross-validation for {model_key}")
         
-    Returns:
-        Dictionary with pipeline results
-    """
-    logger.info("Running full sentiment analysis pipeline")
-    
-    # Create output directories
-    os.makedirs(os.path.join(output_dir, 'models'), exist_ok=True)
-    os.makedirs(os.path.join(output_dir, 'figures'), exist_ok=True)
-    
-    # Load data
-    df = self.load_data(file_path, text_column, target_column)
-    
-    # Add statistical features
-    df_features = self.add_statistical_features(df, text_column)
-    
-    # Extract features
-    features = self.extract_features(
-        df, 
-        text_column, 
-        methods=methods
-    )
-    
-    # Use the first feature extraction method as default
-    default_method = methods[0]
-    X, vectorizer = features[default_method]
-    y = df[target_column].values
-    
-    # Split data
-    X_train, X_test, y_train, y_test = self.split_data(X, y, test_size=test_size)
-    
-    # Train models
-    trained_models = self.train_models(X_train, y_train, models_to_train=models_to_train)
-    
-    # Tune hyperparameters if requested
-    if tune_hyperparams:
-        for model_key in models_to_train:
-            self.hyperparameter_tuning(X_train, y_train, model_key=model_key)
-    
-    # Evaluate models
-    results = self.evaluate_models(X_test, y_test)
-    
-    # Visualize results
-    self.visualize_results(y_test, results, output_dir=os.path.join(output_dir, 'figures'))
-    
-    # Analyze feature importance for best model
-    best_model_key = next((k for k, v in results.items() 
-                          if v['name'] == self.best_model_name), None)
-    
-    if best_model_key:
-        self.analyze_feature_importance(
-            best_model_key, 
-            vectorizer, 
-            output_dir=os.path.join(output_dir, 'figures')
+        # Get the model
+        if model_key not in self.models:
+            logger.warning(f"Model {model_key} not found")
+            return None
+        
+        model = self.models[model_key]
+        
+        # Perform cross-validation
+        start_time = time.time()
+        scores = cross_val_score(
+            model, 
+            X, 
+            y, 
+            cv=cv, 
+            scoring=scoring,
+            n_jobs=-1
         )
-    
-    # Save best model
-    self.save_model(None, output_dir=os.path.join(output_dir, 'models'))
-    
-    # Build and save pipeline
-    pipeline = self.build_pipeline()
-    self.save_pipeline(pipeline, output_dir=os.path.join(output_dir, 'models'))
-    
-    logger.info("Pipeline execution completed successfully")
-    
-    return {
-        'dataset_size': len(df),
-        'feature_method': default_method,
-        'num_features': X.shape[1],
-        'models_trained': list(trained_models.keys()),
-        'best_model': self.best_model_name,
-        'best_score': self.best_score,
-        'results': results
-    }
-    
+        cv_time = time.time() - start_time
+        
+        logger.info(f"Cross-validation completed in {cv_time:.2f} seconds")
+        logger.info(f"Mean {scoring} score: {scores.mean():.4f} (+/- {scores.std():.4f})")
+        
+        return {
+            'model_key': model_key,
+            'scores': scores,
+            'mean_score': scores.mean(),
+            'std_score': scores.std(),
+            'cv': cv,
+            'scoring': scoring,
+            'time': cv_time
+        }
+
+    def run_full_pipeline(self, 
+                        file_path: str,
+                        text_column: str = 'processed_text',
+                        target_column: str = 'target',
+                        methods: List[str] = ['tfidf'],
+                        models_to_train: List[str] = ['lr', 'nb', 'svm'],
+                        test_size: float = 0.2,
+                        tune_hyperparams: bool = False,
+                        output_dir: str = './output') -> Dict:
+        """
+        Run the full modeling pipeline from data loading to evaluation.
+        
+        Args:
+            file_path: Path to the preprocessed CSV file
+            text_column: Name of the column containing processed text
+            target_column: Name of the column containing sentiment labels
+            methods: List of vectorization methods to use
+            models_to_train: List of models to train
+            test_size: Proportion of data to use for testing
+            tune_hyperparams: Whether to perform hyperparameter tuning
+            output_dir: Directory to save outputs
+            
+        Returns:
+            Dictionary with pipeline results
+        """
+        logger.info("Running full sentiment analysis pipeline")
+        
+        # Create output directories
+        os.makedirs(os.path.join(output_dir, 'models'), exist_ok=True)
+        os.makedirs(os.path.join(output_dir, 'figures'), exist_ok=True)
+        
+        # Load data
+        df = self.load_data(file_path, text_column, target_column)
+        
+        # Add statistical features
+        df_features = self.add_statistical_features(df, text_column)
+        
+        # Extract features
+        features = self.extract_features(
+            df, 
+            text_column, 
+            methods=methods
+        )
+        
+        # Use the first feature extraction method as default
+        default_method = methods[0]
+        X, vectorizer = features[default_method]
+        y = df[target_column].values
+        
+        # Split data
+        X_train, X_test, y_train, y_test = self.split_data(X, y, test_size=test_size)
+        
+        # Train models
+        trained_models = self.train_models(X_train, y_train, models_to_train=models_to_train)
+        
+        # Tune hyperparameters if requested
+        if tune_hyperparams:
+            for model_key in models_to_train:
+                self.hyperparameter_tuning(X_train, y_train, model_key=model_key)
+        
+        # Evaluate models
+        results = self.evaluate_models(X_test, y_test)
+        
+        # Visualize results
+       # Visualize results
+        self.visualize_results(y_test, results, X_test=X_test, output_dir=os.path.join(output_dir, 'figures'))
+        
+        # Analyze feature importance for best model
+        best_model_key = next((k for k, v in results.items() 
+                            if v['name'] == self.best_model_name), None)
+        
+        if best_model_key:
+            self.analyze_feature_importance(
+                best_model_key, 
+                vectorizer, 
+                output_dir=os.path.join(output_dir, 'figures')
+            )
+        
+        # Save best model
+        self.save_model(None, output_dir=os.path.join(output_dir, 'models'))
+        
+        # Build and save pipeline
+        pipeline = self.build_pipeline()
+        self.save_pipeline(pipeline, output_dir=os.path.join(output_dir, 'models'))
+        
+        logger.info("Pipeline execution completed successfully")
+        
+        return {
+            'dataset_size': len(df),
+            'feature_method': default_method,
+            'num_features': X.shape[1],
+            'models_trained': list(trained_models.keys()),
+            'best_model': self.best_model_name,
+            'best_score': self.best_score,
+            'results': results
+        }
+        
 if __name__ == "__main__":
-    # Create an instance of the modeler
-    modeler = TwitterSentimentModeler()
-    
-    # Path to your preprocessed data file
-    data_file = "D:\UNI TRIER FILES\My Projects\SA\data\processed_tweets.csv"
-    
-    # Run the full pipeline
-    results = modeler.run_full_pipeline(
-        file_path=data_file,
-        text_column='processed_text',
-        target_column='target',
-        methods=['tfidf'],
-        models_to_train=['lr', 'nb', 'svm'],
-        output_dir='./output'
-    )
-    
-    print("Pipeline execution completed.")
-    print(f"Best model: {results['best_model']} with F1 score: {results['best_score']:.4f}")
+        # Create an instance of the modeler
+        modeler = TwitterSentimentModeler()
+        
+        # Path to your preprocessed data file
+        # 
+        data_file = "D:/UNI TRIER FILES/My Projects/SA/data/processed_tweets.csv"
+        
+        # Run the full pipeline
+        results = modeler.run_full_pipeline(
+            file_path=data_file,
+            text_column='processed_text',
+            target_column='target',
+            methods=['tfidf'],
+            models_to_train=['lr', 'nb', 'svm'],
+            output_dir='./output'
+        )
+        
+        print("Pipeline execution completed.")
+        print(f"Best model: {results['best_model']} with F1 score: {results['best_score']:.4f}")
